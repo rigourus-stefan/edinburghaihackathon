@@ -86,17 +86,42 @@ export function parseMood(value) {
   return MOODS.includes(mood) ? mood : 'neutral'
 }
 
+// The vision prompt forbids describing these, but models don't always listen
+// (e.g. one returned "peach coloured face"). Any phrase that touches them is dropped.
+const SENSITIVE = new RegExp(
+  [
+    'skin', 'complexion', 'skin[- ]?tone', 'tan(ned)?', 'pale', 'freckl\\w*', // skin
+    '(face|cheeks?|lips?)\\b.*\\b(colou?r(ed)?|peach|pink|brown|black|white|beige|tan|olive|pale|dark|light|fair|rosy)',
+    '(peach|pink|brown|black|white|beige|olive|pale|dark|light|fair|rosy)[- ]?(colou?red)?\\s+(face|cheeks?|lips?)',
+    'race', 'racial', 'ethnic\\w*', 'asian', 'african', 'caucasian', 'latin[oax]', 'hispanic', // ethnicity
+    'old', 'young', 'aged?', 'elderly', 'teen\\w*', 'kid', 'child', 'baby', 'wrinkl\\w*', 'grey-haired', // age
+    'fat', 'thin', 'skinny', 'slim', 'chubby', 'overweight', 'heavy', 'weight', 'body', // body
+    'male', 'female', 'man', 'woman', 'boy', 'girl', 'gender', 'masculine', 'feminine', // gender
+    'pretty', 'ugly', 'beautiful', 'handsome', 'cute', 'attractive', 'gorgeous', // looks
+    'sick', 'ill', 'disabled', 'disability', 'scar', 'acne', 'pimples?', 'tired-looking', // health
+  ]
+    .map((w) => `\\b${w}\\b`)
+    .join('|'),
+  'i',
+)
+
+/** A cleaned phrase, or null if it's empty or describes something the book must never mention. */
+export function safePhrase(value) {
+  const v = cleanPhrase(value)
+  return v && SENSITIVE.test(v) ? null : v
+}
+
 /** Normalises a features object, whether it came from the browser or from the vision model. */
 export function parseFeatures(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     throw new HttpError(400, 'Send "features" as the object returned by /scan.')
   }
-  const extras = (Array.isArray(raw.extras) ? raw.extras : []).map((e) => cleanPhrase(e)).filter(Boolean).slice(0, 3)
+  const extras = (Array.isArray(raw.extras) ? raw.extras : []).map(safePhrase).filter(Boolean).slice(0, 3)
   return {
-    glasses: cleanPhrase(raw.glasses),
-    hair: cleanPhrase(raw.hair),
-    expression: cleanPhrase(raw.expression),
-    clothing: cleanPhrase(raw.clothing),
+    glasses: safePhrase(raw.glasses),
+    hair: safePhrase(raw.hair),
+    expression: safePhrase(raw.expression),
+    clothing: safePhrase(raw.clothing),
     extras,
     mood: parseMood(raw.mood),
   }

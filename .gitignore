@@ -10,3 +10,6 @@ __pycache__/
 # Tools
 .code-review-graph/
 .idea/workspace.xml
+
+# macOS
+.DS_Store

@@ -15,7 +15,7 @@ export const MOCK_FEATURES = {
     hair: 'long straight black hair',
     expression: 'droopy, tired eyes',
     clothing: 'blue raincoat',
-    extras: ['silver star earrings', 'freckles'],
+    extras: ['silver star earrings', 'yellow umbrella'],
     mood: 'sad',
   },
   neutral: {
@@ -47,7 +47,7 @@ export function mockStory(name, mood) {
         `Its light had gone out. "I know how that feels," ${name} whispered. The silver star earrings glinted in the dark.`,
         `A small seal was waiting on the rocks. It had lost its way, and nobody else had noticed.`,
         `${name} held up an earring. The tiny star caught the moonlight and shone a path across the water.`,
-        `The seal swam home. The lighthouse flickered back on, just a little. ${name} smiled, freckles and all. Nobody was alone tonight.`,
+        `The seal swam home. The lighthouse flickered back on, just a little. ${name} smiled and shook out the yellow umbrella. Nobody was alone tonight.`,
       ],
     },
     neutral: {
