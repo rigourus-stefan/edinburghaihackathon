@@ -10,7 +10,7 @@ import express from 'express'
 import cors from 'cors'
 import OpenAI from 'openai'
 import { scanPrompt, storyPrompt } from './prompts.js'
-import { MOCK_FEATURES, mockStory } from './mock.js'
+import { MOCK_FEATURES, backupStory, mockStory } from './mock.js'
 import { rateLimit } from './rateLimit.js'
 import {
   HttpError, agreedExtras, describeMeasured, extractJson, hasAnyFeature, moodFromMeasured, parseFeatures, parseGenre,
@@ -26,8 +26,9 @@ const CHECK_MODELS = process.env.VISION_CHECK_MODELS === 'off'
   ? []
   : (process.env.VISION_CHECK_MODELS || 'google/gemma-3-27b-it,openbmb/MiniCPM-V-4_5').split(',').map((m) => m.trim()).filter(Boolean)
 // Story writers, tried in order until one succeeds. Kimi K3 (thinking off) writes a full story in ~3 s;
-// the others are backups if it's slow or busy. Override with STORY_MODELS=a,b,c in .env.
-const STORY_MODELS = (process.env.STORY_MODELS || 'moonshotai/Kimi-K3,openai/gpt-oss-120b,Qwen/Qwen3-235B-A22B-Instruct-2507')
+// gpt-oss is the backup. If both fail, backupStory() builds one from the scan, so a demo never hangs.
+// Override with STORY_MODELS=a,b,c in .env.
+const STORY_MODELS = (process.env.STORY_MODELS || 'moonshotai/Kimi-K3,openai/gpt-oss-120b')
   .split(',').map((m) => m.trim()).filter(Boolean)
 const API_KEY = process.env.NEBIUS_API_KEY?.trim()
 
@@ -100,7 +101,7 @@ app.post('/scan', limit, async (req, res) => {
   // All models look at the same photo at the same time, so the checks add no wait.
   const [main, ...checks] = await Promise.allSettled([
     // Kimi K3 with thinking off: ~1 s instead of ~4 s, and in testing it caught the same details with less filler.
-    look(VISION_MODEL, 30_000, VISION_MODEL.startsWith('moonshotai/') ? { thinking: { type: 'disabled' } } : {}),
+    look(VISION_MODEL, 15_000, VISION_MODEL.startsWith('moonshotai/') ? { thinking: { type: 'disabled' } } : {}),
     ...CHECK_MODELS.map((m) => look(m, 20_000)),
   ])
   content.length = 0 // drop our references to the photos as soon as we're done
@@ -109,9 +110,14 @@ app.post('/scan', limit, async (req, res) => {
   if (main.status === 'rejected') {
     const e = main.reason
     if (e instanceof OpenAI.AuthenticationError) throw e // a bad key should be loud, not hidden
-    // Model, timeout or parse failure: still give the reader a story.
-    console.warn(`/scan fell back to generic features: ${e.name}: ${e.message}`)
-    return res.json({ features: FALLBACK, fallback: true })
+    // The main model was slow or failed: use a check model's answer instead (they saw the same photo).
+    const backup = checks.find((c) => c.status === 'fulfilled' && c.value && !c.value.noFace)
+    console.warn(`/scan: ${VISION_MODEL} failed (${e.message}), ${backup ? 'using a check model instead' : 'using generic features'}`)
+    if (!backup) return res.json({ features: FALLBACK, fallback: true })
+    const features = parseFeatures(backup.value)
+    features.extras = features.extras.slice(0, 3) // unchecked, so keep only a few
+    features.mood = moodFromMeasured(measured) ?? features.mood
+    return res.json({ features })
   }
 
   const raw = main.value
@@ -147,7 +153,7 @@ app.post('/story', limit, async (req, res) => {
     try {
       const reply = await client.chat.completions.create(
         { model, temperature: 1.0, max_tokens: 1400, messages: [{ role: 'user', content: prompt }], ...extra },
-        { timeout: 20_000, maxRetries: 0 }, // on a timeout, move on to the next model rather than wait
+        { timeout: 12_000, maxRetries: 0 }, // on a timeout, move on to the next model rather than wait
       )
       const story = parseStory(extractJson(reply.choices[0]?.message?.content))
       return res.json({ ...story, mood: features.mood })
@@ -156,7 +162,8 @@ app.post('/story', limit, async (req, res) => {
       console.warn(`/story: ${model} failed, trying the next one: ${e.name}: ${e.message}`)
     }
   }
-  throw new HttpError(502, "The book couldn't finish the story. Please try again.")
+  console.warn('/story: every model failed, using the backup story')
+  res.json(backupStory(name, genre, features))
 })
 
 app.get('/health', (_req, res) => {

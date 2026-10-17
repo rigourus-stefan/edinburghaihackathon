@@ -63,3 +63,39 @@ export function mockStory(name, mood) {
   }
   return { ...stories[mood], mood }
 }
+
+// ---------- Backup story ----------
+// Used only if every story model fails or is too slow, so a live demo always ends with a book.
+// Built from the reader's real scan, so it still uses their name, genre, mood and details.
+
+const WORLDS = {
+  adventure: ['the Lost Map', 'a jungle of rope bridges and hidden treasure'],
+  fantasy: ['the Whispering Forest', 'a forest where the trees whispered spells'],
+  scifi: ['the Sleepy Moon', 'a starship drifting past a moon that had lost its glow'],
+  mystery: ['the Missing Secret', 'a library where a secret had gone missing'],
+  thriller: ['the Ticking Clock', 'a city racing a clock that was ticking far too fast'],
+  horror: ['the Whispering Lighthouse', 'a creaky lighthouse full of whispers'],
+  comedy: ['the Backwards Town', 'a town where everything went hilariously backwards'],
+  fairytale: ['the Seventh Hill', 'a kingdom beyond the seventh hill'],
+}
+
+const ENDINGS = {
+  happy: (name) => `${name} laughed, and the whole world lit up. It turned out joy was the strongest magic of all.`,
+  sad: (name) => `Not everything was fixed, but ${name} wasn't alone any more. The sky was a little brighter, because of ${name}.`,
+  neutral: (name) => `${name} smiled quietly. While everyone else had panicked, ${name} had simply watched, and noticed, and solved it.`,
+}
+
+export function backupStory(name, genre, f) {
+  const [place, world] = WORLDS[genre] ?? WORLDS.adventure
+  const [d1, d2] = f.extras
+  const pages = [
+    `${name} had always read books. But today, a book read ${name}, and opened onto ${world}.`,
+    f.glasses
+      ? `${name} pushed up their ${f.glasses} and spotted it at once: a clue nobody else had seen.`
+      : `${name} looked closely and spotted it at once: a clue nobody else had seen.`,
+    `${f.hair ? `With ${f.hair} blowing in the wind` : 'Taking a deep breath'}, ${name} followed the clue${f.expression ? `, wearing a ${f.expression}` : ''}.`,
+    `${f.clothing ? `Tucked inside ${name}'s ${f.clothing} was exactly what they needed.` : `${name} found exactly what they needed.`}${d1 ? ` Even the ${d1} turned out to matter.` : ''}`,
+    `${d2 ? `At the last moment, the ${d2} caught the light and showed the way. ` : ''}${ENDINGS[f.mood] ? ENDINGS[f.mood](name) : ENDINGS.neutral(name)}`,
+  ]
+  return { title: `${name} and ${place}`, pages, mood: f.mood, fallback: true }
+}
