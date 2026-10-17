@@ -189,18 +189,14 @@ button:focus-visible, input:focus-visible, .file:focus-within {
   font-size: 1.5rem;
   line-height: 1;
 }
-.tagline {
-  color: var(--ink-soft);
-  font-size: 1.08rem;
-  margin: 0 0 34px;
-}
-.tagline em { color: var(--ink); font-style: normal; font-weight: 800; }
-.tagline-old, .tagline-new { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.tagline-old { color: var(--ink-soft); opacity: 0.75; }
-.tagline-old svg { color: var(--bad); }
-.tagline-old s { text-decoration-thickness: 1.5px; }
-.tagline-new { margin-top: 6px; color: var(--ink); font-size: 1.22rem; font-weight: 700; }
-.tagline-new svg { color: var(--good); }
+/* Start-screen title: the old idea crossed out, the new one ticked. */
+.hero-title { margin: 0 0 34px; font-size: clamp(1.6rem, 8vw, 3.25rem); } /* scales so each line fits on a phone */
+.title-old, .title-new { display: flex; align-items: center; justify-content: center; gap: 0.3em; }
+.title-old { color: var(--ink-soft); font-size: 0.5em; font-weight: 500; opacity: 0.8; }
+.title-old s { text-decoration-thickness: 2px; }
+.title-old svg { width: 0.8em; height: 0.8em; color: var(--bad); flex: none; }
+.title-new { margin-top: 0.1em; white-space: nowrap; }
+.title-new svg { width: 0.75em; height: 0.75em; color: var(--good); flex: none; }
 .field { display: block; margin-bottom: 24px; text-align: left; }
 .field span, .genres legend {
   display: block;
@@ -410,7 +406,7 @@ mark.feat { padding: 0 2px; color: inherit; background: color-mix(in srgb, var(-
 @media (max-width: 600px) {
   .stage { padding: 30px 20px 24px; }
   .privacy-footer { padding: 12px 20px 18px; }
-  .tagline { margin-bottom: 28px; }
+  .hero-title { margin-bottom: 28px; }
   .genres { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .genre { min-height: 46px; }
   .camera-head { margin-bottom: 14px; }
