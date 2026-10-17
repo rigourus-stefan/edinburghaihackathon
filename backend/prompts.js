@@ -8,7 +8,7 @@ Return ONLY a JSON object, no other text:
   "hair": "colour, length and style, e.g. 'short curly brown hair', or a hat if hair is hidden",
   "expression": "their facial expression right now, e.g. 'big toothy grin', 'small shy smile', 'thoughtful frown', 'droopy, tired eyes'",
   "clothing": "the most visible clothing item with its colour, e.g. 'green zip-up hoodie'",
-  "extras": ["up to 3 other visible things: accessories, headphones, earrings, a cap, a badge, something interesting in the background"],
+  "extras": ["0 to 3 other things worn or held that are large, obvious and clearly visible, e.g. headphones, a cap, a scarf. Usually an empty list."],
   "mood": "exactly one of: happy, sad, neutral — read it honestly from the facial expression"
 }
 
@@ -16,6 +16,9 @@ Strict rules:
 - NEVER mention or guess race, ethnicity, skin colour, age, weight, body size, health, disability, gender or attractiveness.
 - Never describe the colour of the face, skin, cheeks or lips, or marks on the skin (freckles, spots, scars).
 - No judgements about looks. Describe, don't rate.
+- Accuracy matters more than detail. Only describe what you are certain is there. If you are not sure, leave it out.
+- Extras: an empty list is better than one wrong item. Do NOT guess small or thin things (necklaces, chains, lanyards, earrings, piercings, rings, watches, badges): only include them if they are large, in sharp focus and unmistakable. Never mention wrinkles or folds in clothing as items.
+- Describe ONLY the main person. Never mention other people, faces, crowds or anyone in the background.
 - If something is not visible, use null (or an empty list for extras).
 - If there is no person in the photo, return {"noFace": true}.`
 

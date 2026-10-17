@@ -99,6 +99,7 @@ const SENSITIVE = new RegExp(
     'male', 'female', 'man', 'woman', 'boy', 'girl', 'gender', 'masculine', 'feminine', // gender
     'pretty', 'ugly', 'beautiful', 'handsome', 'cute', 'attractive', 'gorgeous', // looks
     'sick', 'ill', 'disabled', 'disability', 'scar', 'acne', 'pimples?', 'tired-looking', // health
+    'people', 'persons?', 'someone', 'somebody', 'crowd', 'faces', 'friends?', 'others', 'audience', // other people
   ]
     .map((w) => `\\b${w}\\b`)
     .join('|'),
@@ -154,4 +155,28 @@ export function parseStory(raw) {
   if (!title) throw new Error('story has no title')
   if (pages.length < 3) throw new Error(`story has only ${pages.length} pages`)
   return { title, pages }
+}
+
+// Words that don't identify *what* an extra is, so they're ignored when matching.
+const DESCRIPTIVE = new Set([
+  'a', 'an', 'the', 'and', 'with', 'on', 'in', 'of', 'around', 'round', 'his', 'her', 'their', 'small', 'large', 'big',
+  'little', 'thin', 'thick', 'long', 'short', 'light', 'dark', 'bright', 'pale', 'black', 'white', 'grey', 'gray',
+  'silver', 'gold', 'golden', 'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'brown', 'beige', 'navy',
+  'colourful', 'colorful', 'striped', 'plain', 'simple', 'neck', 'head', 'ear', 'ears', 'wearing', 'worn',
+])
+
+/** The words that say what an extra *is*: "thin silver chain" -> ["chain"]. */
+function itemWords(phrase) {
+  return phrase.toLowerCase().replace(/[^a-z\s-]/g, ' ').split(/[\s-]+/)
+    .filter((w) => w.length > 2 && !DESCRIPTIVE.has(w))
+    .map((w) => w.replace(/(es|s)$/, ''))
+}
+
+/**
+ * Keeps only the extras that a second, independent model also saw.
+ * Two different models rarely invent the same thing, so this removes most made-up details.
+ */
+export function agreedExtras(primary, check) {
+  const seen = new Set(check.flatMap(itemWords))
+  return primary.filter((e) => itemWords(e).some((w) => seen.has(w)))
 }

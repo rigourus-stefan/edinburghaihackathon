@@ -67,7 +67,7 @@ Response:
 | Field | Type | Notes |
 |---|---|---|
 | `glasses`, `hair`, `expression`, `clothing` | string or `null` | `null` when not visible (e.g. no glasses) |
-| `extras` | string[] | 0 to 3 other things it noticed |
+| `extras` | string[] | 0 to 3 other things it noticed. Often empty: an extra is only kept if two different AI models both saw it, so the book doesn't invent things like a chain you aren't wearing. |
 | `mood` | `"happy"` \| `"sad"` \| `"neutral"` | Read from the facial expression. Drives the story's tone. |
 | `fallback` | `true` (optional) | The AI had trouble, so these are generic features. Still fine to make a story from. |
 
@@ -156,6 +156,7 @@ curl -X POST 'localhost:8000/scan?mood=sad' -H 'Content-Type: application/json' 
 
 - The photo stays in memory for one request only. It is never saved to disk and never logged.
 - The vision prompt only describes visible, neutral things. It never guesses race, age, gender, weight, health or attractiveness.
+- Models don't always follow that, so every phrase also goes through a filter that drops anything about skin or face colour, ethnicity, age, body, gender, looks, health or other people in the photo.
 - Names and features are cleaned before they go into the story prompt, so they can't be used to trick the AI.
 
 ## Settings
@@ -166,6 +167,7 @@ Optional, in `backend/.env` (see `.env.example`):
 |---|---|
 | `PORT` | `8000` |
 | `VISION_MODEL` | `google/gemma-3-27b-it` |
+| `VISION_CHECK_MODEL` | `openbmb/MiniCPM-V-4_5`: second opinion on extras, or `off` |
 | `STORY_MODEL` | `Qwen/Qwen3-235B-A22B-Instruct-2507` |
 | `RATE_LIMIT_PER_MIN` | `20` |
 | `CORS_ORIGIN` | any origin. Comma-separate to restrict, e.g. `http://localhost:5173`. |

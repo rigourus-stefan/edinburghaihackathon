@@ -13,13 +13,15 @@ import { SCAN_PROMPT, storyPrompt } from './prompts.js'
 import { MOCK_FEATURES, mockStory } from './mock.js'
 import { rateLimit } from './rateLimit.js'
 import {
-  HttpError, extractJson, hasAnyFeature, parseFeatures, parseGenre, parseHeroName, parseImage, parseMood, parseStory,
+  HttpError, agreedExtras, extractJson, hasAnyFeature, parseFeatures, parseGenre, parseHeroName, parseImage, parseMood, parseStory,
 } from './validate.js'
 
 const MOCK = process.env.MOCK === '1'
 const PORT = Number(process.env.PORT ?? 8000)
 const VISION_MODEL = process.env.VISION_MODEL || 'google/gemma-3-27b-it'
 const STORY_MODEL = process.env.STORY_MODEL || 'Qwen/Qwen3-235B-A22B-Instruct-2507'
+// A second, different vision model double-checks the extras. Set VISION_CHECK_MODEL=off to skip it.
+const CHECK_MODEL = process.env.VISION_CHECK_MODEL === 'off' ? null : process.env.VISION_CHECK_MODEL || 'openbmb/MiniCPM-V-4_5'
 const API_KEY = process.env.NEBIUS_API_KEY?.trim()
 
 if (!MOCK && (!API_KEY || API_KEY.startsWith('your-'))) {
@@ -72,36 +74,49 @@ app.post('/scan', limit, async (req, res) => {
   }
 
   let image = parseImage(req.body?.image)
-  let raw
-  try {
-    const reply = await client.chat.completions.create(
-      {
-        model: VISION_MODEL,
-        temperature: 0.2,
-        max_tokens: 300,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'text', text: SCAN_PROMPT },
-            { type: 'image_url', image_url: { url: `data:${image.mime};base64,${image.base64}` } },
-          ],
-        }],
-      },
-      { timeout: 20_000 },
-    )
-    raw = extractJson(reply.choices[0]?.message?.content)
-  } catch (e) {
+  const look = (model) =>
+    client.chat.completions
+      .create(
+        {
+          model,
+          temperature: 0,
+          max_tokens: 300,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: SCAN_PROMPT },
+              { type: 'image_url', image_url: { url: `data:${image.mime};base64,${image.base64}` } },
+            ],
+          }],
+        },
+        { timeout: 20_000 },
+      )
+      .then((reply) => extractJson(reply.choices[0]?.message?.content))
+
+  // Both models look at the same photo at the same time, so the check adds no wait.
+  const [main, check] = await Promise.allSettled([look(VISION_MODEL), CHECK_MODEL ? look(CHECK_MODEL) : null])
+  image = null // drop our reference to the photo as soon as we're done
+  req.body = null
+
+  if (main.status === 'rejected') {
+    const e = main.reason
     if (e instanceof OpenAI.AuthenticationError) throw e // a bad key should be loud, not hidden
-    // Model, timeout or parse failure: still give the kid a story.
+    // Model, timeout or parse failure: still give the reader a story.
     console.warn(`/scan fell back to generic features: ${e.name}: ${e.message}`)
     return res.json({ features: FALLBACK, fallback: true })
-  } finally {
-    image = null // drop our reference to the photo as soon as we're done
-    req.body = null
   }
 
+  const raw = main.value
   if (raw?.noFace) throw new HttpError(422, "The book couldn't see a face. Look straight at the camera and try again.")
   const features = parseFeatures(raw)
+
+  // Keep only extras the second model also saw. If the check failed, keep none rather than risk a made-up one.
+  if (CHECK_MODEL) {
+    const checked = check.status === 'fulfilled' && check.value && !check.value.noFace ? parseFeatures(check.value).extras : []
+    if (check.status === 'rejected') console.warn(`/scan check model failed, dropping extras: ${check.reason?.message}`)
+    features.extras = agreedExtras(features.extras, checked)
+  }
+
   res.json(hasAnyFeature(features) ? { features } : { features: FALLBACK, fallback: true })
 })
 
@@ -130,7 +145,7 @@ app.post('/story', limit, async (req, res) => {
 })
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, mock: MOCK, vision: VISION_MODEL, story: STORY_MODEL })
+  res.json({ ok: true, mock: MOCK, vision: VISION_MODEL, visionCheck: CHECK_MODEL, story: STORY_MODEL })
 })
 
 app.use((_req, res) => res.status(404).json({ detail: 'Not found. Try POST /scan or POST /story.' }))
