@@ -1,3 +1,10 @@
+// CAMERA SCREEN: finds your face and takes ONE photo.
+// 1. Turns on the webcam at 1080p and loads MediaPipe Face Landmarker (face tracking in the browser).
+// 2. tick() checks ~60 times a second: one face? close enough? centred? bright enough? still?
+// 3. When all yes for 1 second: 3-2-1 countdown, then capture() -> makeShot().
+// 4. makeShot() builds: the full photo + a sharp face close-up + measured expression numbers.
+// 5. Camera switches off straight after. Nothing is saved.
+
 import { useEffect, useRef, useState } from 'react'
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 

@@ -1,4 +1,8 @@
-// Checks and cleans everything that comes in from the browser or back from a model.
+// VALIDATE: checks and cleans everything coming in from the browser or back from an AI model.
+//   parseImage / parseHeroName / parseGenre -> is the input safe and sensible?
+//   SENSITIVE + safePhrase                  -> privacy filter: drops skin, age, gender, looks...
+//   agreedExtras                            -> anti-hallucination: keep a detail only if 2 models saw it
+//   moodFromMeasured                        -> mood from the face tracker's numbers
 // Anything that fails throws an HttpError, which server.js turns into { detail } JSON.
 
 const MOODS = ['happy', 'sad', 'neutral']

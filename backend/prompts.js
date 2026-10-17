@@ -1,4 +1,8 @@
-// Everything the models are told. The prompts are the product: tune them here.
+// PROMPTS: everything the AI models are told. The prompts are the product: tune them here.
+//   scanPrompt()  -> what the vision models look for in the photo (and what they must never say)
+//   MOOD_ARCS     -> how happy / sad / calm changes the whole story
+//   GENRE_FLAVOUR -> what each of the 8 genres means
+//   storyPrompt() -> puts name + genre + face-scan features + mood together for the story model
 
 /**
  * What the vision models are asked. `closeUp`: a sharp face close-up is attached as a second image.

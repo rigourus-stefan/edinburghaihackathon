@@ -1,3 +1,7 @@
+// BOOK SCREEN: shows the story page by page and reads it aloud.
+// highlightTerms() works out which words came from the face scan; <Highlighted> makes them glow,
+// with a hover label saying which scan feature each one came from.
+
 import { useEffect, useMemo, useState } from 'react'
 import useSpeech from '../useSpeech'
 

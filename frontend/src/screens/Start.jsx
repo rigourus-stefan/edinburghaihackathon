@@ -1,3 +1,5 @@
+// START SCREEN: the title, your name and the genre picker.
+
 import { useState } from 'react'
 
 const GENRES = [

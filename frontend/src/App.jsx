@@ -1,3 +1,7 @@
+// APP: the brain of the frontend.
+// Keeps track of which screen is showing (start -> camera -> scanning -> saw -> book)
+// and moves between them. Sends the photo to /scan, then asks /story for the story.
+
 import { useState } from 'react'
 import { scanFace, writeStory } from './api'
 import Start from './screens/Start'

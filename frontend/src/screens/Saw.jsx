@@ -1,3 +1,6 @@
+// "WHAT THE BOOK SAW" SCREEN: reveals each feature from the face scan one by one,
+// then the mood. The story is already being written in the background while this plays.
+
 import { useEffect, useState } from 'react'
 import { featureList, MOOD_INFO } from '../api'
 
