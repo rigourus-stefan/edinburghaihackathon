@@ -32,12 +32,13 @@ export default function App() {
     setScreen('camera')
   }
 
-  async function onCaptured(image) {
-    setPhoto(image)
+  // shot = { image, face?, measured? } from the camera screen
+  async function onCaptured(shot) {
+    setPhoto(shot.image)
     setError(null)
     setScreen('scanning')
     try {
-      const f = await scanFace(image)
+      const f = await scanFace(shot)
       setFeatures(f)
       // Start writing while the child watches "what the book saw": it hides the wait.
       startWriting(f)

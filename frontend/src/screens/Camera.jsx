@@ -1,19 +1,74 @@
 import { useEffect, useRef, useState } from 'react'
-import { FaceDetector, FilesetResolver } from '@mediapipe/tasks-vision'
+import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 
 const STEADY_MS = 1000 // face must hold still this long before the countdown
 const COUNT_MS = 900 // length of each 3-2-1 step
 const MAX_MOVE = 0.035 // how far the face centre may drift between frames (share of frame width)
-const CAPTURE_WIDTH = 768
+const FULL_WIDTH = 768 // the whole photo: enough for clothes and background
+const FACE_MAX = 1024 // the face close-up, cut from the camera's full resolution for small details
+const EXPRESSION_FRAMES = 12 // expression is averaged over the last ~0.4 s, so a blink doesn't count
 
-/** Draws a source (video or image) onto a canvas ~768px wide and returns a JPEG data URL. */
-function toJpeg(source, srcWidth, srcHeight) {
-  const scale = Math.min(1, CAPTURE_WIDTH / srcWidth)
+/** Draws part of a source (video or image) onto a canvas and returns a JPEG data URL. */
+function toJpeg(source, sx, sy, sw, sh, maxSide, quality) {
+  const scale = Math.min(1, maxSide / Math.max(sw, sh))
   const canvas = document.createElement('canvas')
-  canvas.width = Math.round(srcWidth * scale)
-  canvas.height = Math.round(srcHeight * scale)
-  canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height)
-  return canvas.toDataURL('image/jpeg', 0.85)
+  canvas.width = Math.round(sw * scale)
+  canvas.height = Math.round(sh * scale)
+  canvas.getContext('2d').drawImage(source, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
+  return canvas.toDataURL('image/jpeg', quality)
+}
+
+/** Bounding box of the face landmarks, in 0..1 image coordinates. */
+function faceBox(landmarks) {
+  let x0 = 1, y0 = 1, x1 = 0, y1 = 0
+  for (const p of landmarks) {
+    x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y)
+    x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y)
+  }
+  return { x0, y0, x1, y1 }
+}
+
+/** Close-up of head and shoulders: the face box widened for ears and hair, extended up and down to the collar. */
+function faceCrop(source, w, h, landmarks) {
+  const b = faceBox(landmarks)
+  const bw = (b.x1 - b.x0) * w
+  const bh = (b.y1 - b.y0) * h
+  const cx = ((b.x0 + b.x1) / 2) * w
+  const left = Math.max(0, cx - bw * 0.95)
+  const right = Math.min(w, cx + bw * 0.95)
+  const top = Math.max(0, b.y0 * h - bh * 0.55)
+  const bottom = Math.min(h, b.y1 * h + bh * 0.75)
+  return toJpeg(source, left, top, right - left, bottom - top, FACE_MAX, 0.9)
+}
+
+/** MediaPipe blendshapes -> the expression numbers the backend understands (each 0..1). */
+function readExpression(categories) {
+  if (!categories) return null
+  const g = Object.fromEntries(categories.map((c) => [c.categoryName, c.score]))
+  const both = (name) => ((g[`${name}Left`] ?? 0) + (g[`${name}Right`] ?? 0)) / 2
+  return {
+    smile: both('mouthSmile'), mouthOpen: g.jawOpen ?? 0, frown: both('mouthFrown'),
+    browRaise: both('browOuterUp'), browInnerUp: g.browInnerUp ?? 0, browDown: both('browDown'),
+    eyeSquint: both('eyeSquint'), eyeWide: both('eyeWide'), cheekRaise: both('cheekSquint'),
+    lipPress: both('mouthPress'), pucker: g.mouthPucker ?? 0,
+  }
+}
+
+function averageExpression(frames) {
+  const valid = frames.filter(Boolean)
+  if (!valid.length) return undefined
+  const out = {}
+  for (const key of Object.keys(valid[0])) out[key] = valid.reduce((sum, f) => sum + f[key], 0) / valid.length
+  return out
+}
+
+/** Everything sent to /scan: the full photo, plus a sharp face close-up and expression numbers when a face was found. */
+function makeShot(source, w, h, landmarks, measured) {
+  return {
+    image: toJpeg(source, 0, 0, w, h, FULL_WIDTH, 0.85),
+    face: landmarks ? faceCrop(source, w, h, landmarks) : undefined,
+    measured,
+  }
 }
 
 /** Average brightness 0-255 of a tiny downscaled copy of the frame. */
@@ -26,17 +81,20 @@ function brightness(video, canvas) {
   return sum / (data.length / 4)
 }
 
+// Face Landmarker: 478 face points (for framing and the close-up) plus 52 expression measurements.
 async function createDetector() {
   const fileset = await FilesetResolver.forVisionTasks('/mediapipe')
   const options = (delegate) => ({
-    baseOptions: { modelAssetPath: '/models/blaze_face_short_range.tflite', delegate },
+    baseOptions: { modelAssetPath: '/models/face_landmarker.task', delegate },
     runningMode: 'VIDEO',
-    minDetectionConfidence: 0.6,
+    numFaces: 2, // so we can say "only one face please"
+    outputFaceBlendshapes: true,
+    minFaceDetectionConfidence: 0.6,
   })
   try {
-    return await FaceDetector.createFromOptions(fileset, options('GPU'))
+    return await FaceLandmarker.createFromOptions(fileset, options('GPU'))
   } catch {
-    return FaceDetector.createFromOptions(fileset, options('CPU'))
+    return FaceLandmarker.createFromOptions(fileset, options('CPU'))
   }
 }
 
@@ -50,6 +108,7 @@ export default function Camera({ heroName, error, onCapture, onBack }) {
   const [photo, setPhoto] = useState(null)
   const [session, setSession] = useState(0) // bump to restart the camera (retake)
   const captureRef = useRef(null)
+  const detectorRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -57,7 +116,7 @@ export default function Camera({ heroName, error, onCapture, onBack }) {
     let detector = null
     let raf = 0
     const lightCanvas = Object.assign(document.createElement('canvas'), { width: 24, height: 24 })
-    const s = { steadySince: null, countdownStart: null, last: null, frame: 0, dark: false, hint: '', count: null, ok: false }
+    const s = { steadySince: null, countdownStart: null, last: null, frame: 0, dark: false, hint: '', count: null, ok: false, landmarks: null, expressions: [] }
 
     const show = (h, c, ok) => {
       if (h !== s.hint) setHint((s.hint = h))
@@ -74,9 +133,9 @@ export default function Camera({ heroName, error, onCapture, onBack }) {
     function capture() {
       const video = videoRef.current
       if (!video?.videoWidth) return
-      const image = toJpeg(video, video.videoWidth, video.videoHeight)
+      const shot = makeShot(video, video.videoWidth, video.videoHeight, s.landmarks, averageExpression(s.expressions))
       stop() // camera off the moment the photo is taken
-      setPhoto(image)
+      setPhoto(shot)
       setStatus('captured')
     }
     captureRef.current = capture
@@ -88,20 +147,21 @@ export default function Camera({ heroName, error, onCapture, onBack }) {
       if (!detector || !video || video.readyState < 2) return
 
       const now = performance.now()
-      const vw = video.videoWidth
-      const vh = video.videoHeight
       if (s.frame++ % 10 === 0) s.dark = brightness(video, lightCanvas) < 45
 
-      const faces = detector.detectForVideo(video, now).detections
+      const result = detector.detectForVideo(video, now)
+      const faces = result.faceLandmarks
+      s.landmarks = faces.length === 1 ? faces[0] : null
+      s.expressions = [...s.expressions, faces.length === 1 ? readExpression(result.faceBlendshapes[0]?.categories) : null].slice(-EXPRESSION_FRAMES)
       let problem = null
       let centre = null
       if (s.dark) problem = "It's a bit too dark. Find some light!"
       else if (faces.length === 0) problem = 'Look at the book so it can see you'
       else if (faces.length > 1) problem = 'Only one face please'
       else {
-        const b = faces[0].boundingBox
-        centre = { x: (b.originX + b.width / 2) / vw, y: (b.originY + b.height / 2) / vh }
-        const size = b.width / vw
+        const b = faceBox(faces[0])
+        centre = { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 }
+        const size = b.x1 - b.x0
         if (size < 0.2) problem = 'Move a little closer'
         else if (size > 0.62) problem = 'Move back a little'
         else if (Math.abs(centre.x - 0.5) > 0.15 || Math.abs(centre.y - 0.5) > 0.2) problem = 'Move your face into the oval'
@@ -134,7 +194,7 @@ export default function Camera({ heroName, error, onCapture, onBack }) {
       setPhoto(null)
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+          video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } }, // full HD for the close-up
           audio: false,
         })
       } catch {
@@ -149,7 +209,7 @@ export default function Camera({ heroName, error, onCapture, onBack }) {
       setHint('Getting the book ready to read you…')
 
       try {
-        detector = await createDetector()
+        detector = detectorRef.current = await createDetector()
       } catch (e) {
         console.warn('Face detector failed to load', e)
         if (!cancelled) {
@@ -166,14 +226,32 @@ export default function Camera({ heroName, error, onCapture, onBack }) {
       cancelled = true
       stop()
       detector?.close()
+      detectorRef.current = null
     }
   }, [session])
 
+  // An uploaded photo gets the same treatment as the camera: face close-up and expression, if a face is found.
   function loadTestPhoto(file) {
     if (!file) return
     const img = new Image()
-    img.onload = () => {
-      onCapture(toJpeg(img, img.naturalWidth, img.naturalHeight))
+    img.onload = async () => {
+      let landmarks = null
+      let measured
+      let detector = detectorRef.current
+      const own = !detector
+      try {
+        detector ??= await createDetector()
+        const result = detector.detectForVideo(img, performance.now())
+        if (result.faceLandmarks.length === 1) {
+          landmarks = result.faceLandmarks[0]
+          measured = readExpression(result.faceBlendshapes[0]?.categories) ?? undefined
+        }
+      } catch (e) {
+        console.warn('Could not find a face in the test photo', e)
+      } finally {
+        if (own) detector?.close()
+      }
+      onCapture(makeShot(img, img.naturalWidth, img.naturalHeight, landmarks, measured))
       URL.revokeObjectURL(img.src)
     }
     img.src = URL.createObjectURL(file)
@@ -207,7 +285,7 @@ export default function Camera({ heroName, error, onCapture, onBack }) {
         </div>
       ) : status === 'captured' && photo ? (
         <div className="review">
-          <img className="viewport" src={photo} alt="The photo the book will read" />
+          <img className="viewport" src={photo.image} alt="The photo the book will read" />
           <div className="row">
             <button className="secondary" onClick={() => setSession((n) => n + 1)}>Retake photo</button>
             <button className="primary big" onClick={() => onCapture(photo)}>Read me</button>

@@ -2,17 +2,25 @@ import { useEffect, useMemo, useState } from 'react'
 import { MOOD_INFO } from '../api'
 import useSpeech from '../useSpeech'
 
-const SKIP_WORDS = new Set(['look', 'eyes', 'face', 'smile', 'top', 'shirt', 'with', 'round', 'neck', 'background'])
+const SKIP_WORDS = new Set(['look', 'face', 'top', 'shirt', 'round', 'neck', 'background', 'them', 'side', 'left', 'right'])
 
-/** Words/phrases to make glow: each full feature phrase, plus its key noun as a fallback. */
+// "tiny star earring on the left ear" -> the thing itself is before "on": "tiny star earring".
+const TRAILING = /\s(on|with|from|behind|in|by|near|at|around|over|under|hanging|that|which)\s.*$/
+
+/** Words/phrases to make glow: each full feature phrase, plus the thing it names ("hair clip", "clip"). */
 function highlightTerms(f) {
   const phrases = [f.glasses, f.hair, f.expression, f.clothing, ...(f.extras ?? [])].filter(Boolean)
   const terms = new Set()
   for (const p of phrases) {
-    terms.add(p.toLowerCase())
-    const words = p.toLowerCase().replace(/[^a-z\s-]/g, '').split(/\s+/)
-    const key = [...words].reverse().find((w) => w.length > 3 && !SKIP_WORDS.has(w))
-    if (key) terms.add(key)
+    const phrase = p.toLowerCase()
+    terms.add(phrase)
+    const head = phrase.replace(TRAILING, '').replace(/[^a-z\s-]/g, '').trim()
+    const words = head.split(/\s+/)
+    const noun = words.at(-1)
+    if (noun && noun.length > 3 && !SKIP_WORDS.has(noun)) {
+      terms.add(noun)
+      if (words.length > 1) terms.add(words.slice(-2).join(' ')) // "hair clip", "star earring"
+    }
   }
   return [...terms].sort((a, b) => b.length - a.length)
 }

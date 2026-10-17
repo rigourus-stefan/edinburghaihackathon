@@ -21,9 +21,12 @@ async function post(path, body) {
   return res.json()
 }
 
-/** Sends the one photo. The backend uses it once and never stores it. */
-export function scanFace(imageDataUrl) {
-  return post('/scan', { image: imageDataUrl }).then((r) => r.features)
+/**
+ * Sends the one photo: the full frame, a sharp face close-up and the measured expression.
+ * The backend uses them once and never stores them.
+ */
+export function scanFace({ image, face, measured }) {
+  return post('/scan', { image, face, measured }).then((r) => r.features)
 }
 
 export function writeStory(heroName, genre, features) {
@@ -37,7 +40,7 @@ export function featureList(f) {
   if (f.hair) items.push({ label: 'Hair', value: f.hair, icon: '💇' })
   if (f.expression) items.push({ label: 'Expression', value: f.expression, icon: { happy: '😄', sad: '😢' }[f.mood] ?? '😐' })
   if (f.clothing) items.push({ label: 'Clothes', value: f.clothing, icon: '👕' })
-  for (const e of f.extras ?? []) items.push({ label: 'Also noticed', value: e, icon: '✨' })
+  for (const e of f.extras ?? []) items.push({ label: 'Detail', value: e, icon: '✨' })
   return items
 }
 

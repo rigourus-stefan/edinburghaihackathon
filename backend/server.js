@@ -9,19 +9,23 @@
 import express from 'express'
 import cors from 'cors'
 import OpenAI from 'openai'
-import { SCAN_PROMPT, storyPrompt } from './prompts.js'
+import { scanPrompt, storyPrompt } from './prompts.js'
 import { MOCK_FEATURES, mockStory } from './mock.js'
 import { rateLimit } from './rateLimit.js'
 import {
-  HttpError, agreedExtras, extractJson, hasAnyFeature, parseFeatures, parseGenre, parseHeroName, parseImage, parseMood, parseStory,
+  HttpError, agreedExtras, describeMeasured, extractJson, hasAnyFeature, moodFromMeasured, parseFeatures, parseGenre,
+  parseHeroName, parseImage, parseMeasured, parseMood, parseStory,
 } from './validate.js'
 
 const MOCK = process.env.MOCK === '1'
 const PORT = Number(process.env.PORT ?? 8000)
-const VISION_MODEL = process.env.VISION_MODEL || 'google/gemma-3-27b-it'
+// The main model reads the fine details (Kimi K3 thinks before answering, so it guesses less).
+// The check models look at the same photo in parallel; a small detail is kept only if one of them saw it too.
+const VISION_MODEL = process.env.VISION_MODEL || 'moonshotai/Kimi-K3'
+const CHECK_MODELS = process.env.VISION_CHECK_MODELS === 'off'
+  ? []
+  : (process.env.VISION_CHECK_MODELS || 'google/gemma-3-27b-it,openbmb/MiniCPM-V-4_5').split(',').map((m) => m.trim()).filter(Boolean)
 const STORY_MODEL = process.env.STORY_MODEL || 'Qwen/Qwen3-235B-A22B-Instruct-2507'
-// A second, different vision model double-checks the extras. Set VISION_CHECK_MODEL=off to skip it.
-const CHECK_MODEL = process.env.VISION_CHECK_MODEL === 'off' ? null : process.env.VISION_CHECK_MODEL || 'openbmb/MiniCPM-V-4_5'
 const API_KEY = process.env.NEBIUS_API_KEY?.trim()
 
 if (!MOCK && (!API_KEY || API_KEY.startsWith('your-'))) {
@@ -61,7 +65,7 @@ const app = express()
 app.set('trust proxy', 'loopback') // correct req.ip behind a local proxy (e.g. Vite's /api proxy)
 app.disable('x-powered-by')
 app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') ?? true }))
-app.use(express.json({ limit: '7mb' })) // a 5 MB image is ~6.7 MB as base64
+app.use(express.json({ limit: '14mb' })) // two images of up to 5 MB each, as base64
 
 const limit = rateLimit({ windowMs: 60_000, max: Number(process.env.RATE_LIMIT_PER_MIN ?? 20) })
 
@@ -73,30 +77,31 @@ app.post('/scan', limit, async (req, res) => {
     return res.json({ features: MOCK_FEATURES[mood] })
   }
 
-  let image = parseImage(req.body?.image)
-  const look = (model) =>
+  // `image`: the full photo. `face` (optional): a sharp close-up of the face from the camera's full resolution.
+  // `measured` (optional): expression numbers from the browser's face tracker.
+  let images = [parseImage(req.body?.image)]
+  if (req.body?.face) images.push(parseImage(req.body.face))
+  const measured = parseMeasured(req.body?.measured)
+  req.body = null
+
+  const prompt = scanPrompt({ closeUp: images.length > 1, measured: measured && describeMeasured(measured) })
+  const content = [
+    { type: 'text', text: prompt },
+    ...images.map((img) => ({ type: 'image_url', image_url: { url: `data:${img.mime};base64,${img.base64}` } })),
+  ]
+  const look = (model, timeout, extra = {}) =>
     client.chat.completions
-      .create(
-        {
-          model,
-          temperature: 0,
-          max_tokens: 300,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'text', text: SCAN_PROMPT },
-              { type: 'image_url', image_url: { url: `data:${image.mime};base64,${image.base64}` } },
-            ],
-          }],
-        },
-        { timeout: 20_000 },
-      )
+      .create({ model, temperature: 0, max_tokens: 4000, messages: [{ role: 'user', content }], ...extra }, { timeout })
       .then((reply) => extractJson(reply.choices[0]?.message?.content))
 
-  // Both models look at the same photo at the same time, so the check adds no wait.
-  const [main, check] = await Promise.allSettled([look(VISION_MODEL), CHECK_MODEL ? look(CHECK_MODEL) : null])
-  image = null // drop our reference to the photo as soon as we're done
-  req.body = null
+  // All models look at the same photo at the same time, so the checks add no wait.
+  const [main, ...checks] = await Promise.allSettled([
+    // Kimi K3 with thinking off: ~1 s instead of ~4 s, and in testing it caught the same details with less filler.
+    look(VISION_MODEL, 30_000, VISION_MODEL.startsWith('moonshotai/') ? { thinking: { type: 'disabled' } } : {}),
+    ...CHECK_MODELS.map((m) => look(m, 20_000)),
+  ])
+  content.length = 0 // drop our references to the photos as soon as we're done
+  images = null
 
   if (main.status === 'rejected') {
     const e = main.reason
@@ -110,12 +115,16 @@ app.post('/scan', limit, async (req, res) => {
   if (raw?.noFace) throw new HttpError(422, "The book couldn't see a face. Look straight at the camera and try again.")
   const features = parseFeatures(raw)
 
-  // Keep only extras the second model also saw. If the check failed, keep none rather than risk a made-up one.
-  if (CHECK_MODEL) {
-    const checked = check.status === 'fulfilled' && check.value && !check.value.noFace ? parseFeatures(check.value).extras : []
-    if (check.status === 'rejected') console.warn(`/scan check model failed, dropping extras: ${check.reason?.message}`)
-    features.extras = agreedExtras(features.extras, checked)
+  // Keep only small details at least one check model also saw. If every check failed, keep none
+  // rather than risk a made-up one.
+  if (CHECK_MODELS.length) {
+    const seen = checks.filter((c) => c.status === 'fulfilled' && c.value && !c.value.noFace).map((c) => parseFeatures(c.value).extras)
+    if (!seen.length) console.warn('/scan: every check model failed, dropping small details')
+    features.extras = agreedExtras(features.extras, ...seen)
   }
+
+  // The face tracker's numbers beat a guess from a still photo.
+  features.mood = moodFromMeasured(measured) ?? features.mood
 
   res.json(hasAnyFeature(features) ? { features } : { features: FALLBACK, fallback: true })
 })
@@ -131,7 +140,7 @@ app.post('/story', limit, async (req, res) => {
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const reply = await client.chat.completions.create(
-        { model: STORY_MODEL, temperature: 1.0, max_tokens: 900, messages: [{ role: 'user', content: prompt }] },
+        { model: STORY_MODEL, temperature: 1.0, max_tokens: 1400, messages: [{ role: 'user', content: prompt }] },
         { timeout: 30_000 },
       )
       const story = parseStory(extractJson(reply.choices[0]?.message?.content))
@@ -145,7 +154,7 @@ app.post('/story', limit, async (req, res) => {
 })
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, mock: MOCK, vision: VISION_MODEL, visionCheck: CHECK_MODEL, story: STORY_MODEL })
+  res.json({ ok: true, mock: MOCK, vision: VISION_MODEL, visionChecks: CHECK_MODELS, story: STORY_MODEL })
 })
 
 app.use((_req, res) => res.status(404).json({ detail: 'Not found. Try POST /scan or POST /story.' }))

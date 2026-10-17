@@ -117,7 +117,7 @@ export function parseFeatures(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     throw new HttpError(400, 'Send "features" as the object returned by /scan.')
   }
-  const extras = (Array.isArray(raw.extras) ? raw.extras : []).map(safePhrase).filter(Boolean).slice(0, 3)
+  const extras = [...new Set((Array.isArray(raw.extras) ? raw.extras : []).map(safePhrase).filter(Boolean))].slice(0, 8)
   return {
     glasses: safePhrase(raw.glasses),
     hair: safePhrase(raw.hair),
@@ -176,7 +176,44 @@ function itemWords(phrase) {
  * Keeps only the extras that a second, independent model also saw.
  * Two different models rarely invent the same thing, so this removes most made-up details.
  */
-export function agreedExtras(primary, check) {
-  const seen = new Set(check.flatMap(itemWords))
+export function agreedExtras(primary, ...checks) {
+  const seen = new Set(checks.flat().flatMap(itemWords))
   return primary.filter((e) => itemWords(e).some((w) => seen.has(w)))
+}
+
+// ---------- expression measurements from the browser's face tracker ----------
+// MediaPipe Face Landmarker blendshapes, already averaged left/right by the frontend. Each is 0..1.
+const MEASURES = {
+  smile: 'smile', mouthOpen: 'mouth open', frown: 'mouth corners down', browRaise: 'eyebrows raised',
+  browInnerUp: 'inner eyebrows lifted', browDown: 'eyebrows lowered', eyeSquint: 'eyes squinting',
+  eyeWide: 'eyes wide', cheekRaise: 'cheeks raised', lipPress: 'lips pressed', pucker: 'lips puckered',
+}
+
+/** Cleans the optional `measured` object: known keys only, numbers clamped to 0..1. Returns null if absent. */
+export function parseMeasured(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const out = {}
+  for (const key of Object.keys(MEASURES)) {
+    const v = Number(raw[key])
+    if (Number.isFinite(v)) out[key] = Math.min(1, Math.max(0, Math.round(v * 100) / 100))
+  }
+  return Object.keys(out).length ? out : null
+}
+
+/** "smile 0.82, eyebrows raised 0.10, ..." for the vision prompt. */
+export function describeMeasured(m) {
+  return Object.entries(m).map(([k, v]) => `${MEASURES[k]} ${v.toFixed(2)}`).join(', ')
+}
+
+/**
+ * Mood from the measurements, or null when they don't clearly say.
+ * A real smile reads ~0.4-0.9; a sad face shows lifted inner brows or turned-down mouth with no smile.
+ */
+export function moodFromMeasured(m) {
+  if (!m) return null
+  const smile = m.smile ?? 0
+  if (smile >= 0.4) return 'happy'
+  if (smile < 0.12 && ((m.frown ?? 0) >= 0.2 || (m.browInnerUp ?? 0) >= 0.35)) return 'sad'
+  if (smile < 0.12) return 'neutral'
+  return null // a slight smile: let the vision model decide
 }

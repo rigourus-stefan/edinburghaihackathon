@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { featureList, MOOD_INFO } from '../api'
 
-const REVEAL_MS = 900
+const REVEAL_MS = 650
 
 export default function Saw({ heroName, features, story, storyError, onOpen, onRetry, onRetake }) {
   const items = featureList(features)

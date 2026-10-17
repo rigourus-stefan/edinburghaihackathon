@@ -43,11 +43,23 @@ All requests and responses are JSON. CORS is open, so you can call it straight f
 
 ### `POST /scan`
 
-Send **one** photo: a base64 JPEG, PNG or WebP, ideally about 768 px wide (around 100 KB). A plain base64 string or a `data:image/jpeg;base64,...` URL both work, so `canvas.toDataURL('image/jpeg', 0.85)` can be sent as-is.
+Send **one** photo: a base64 JPEG, PNG or WebP. A plain base64 string or a `data:image/jpeg;base64,...` URL both work, so `canvas.toDataURL('image/jpeg', 0.85)` can be sent as-is.
 
 ```json
-{ "image": "data:image/jpeg;base64,/9j/4AAQ..." }
+{
+  "image": "data:image/jpeg;base64,/9j/4AAQ...",
+  "face": "data:image/jpeg;base64,/9j/4AAQ...",
+  "measured": { "smile": 0.82, "browRaise": 0.1, "eyeSquint": 0.35 }
+}
 ```
+
+| Field | Required | What |
+|---|---|---|
+| `image` | yes | The whole photo, about 768 px wide (around 100 KB). |
+| `face` | no, but strongly recommended | A sharp close-up of head and shoulders, cut from the camera's **full** resolution (up to 1024 px). This is where the small details come from (earrings, logos, hair clips, eyebrows). Up to 5 MB. |
+| `measured` | no | Expression numbers (0 to 1) from MediaPipe Face Landmarker blendshapes, averaged left/right: `smile`, `mouthOpen`, `frown`, `browRaise`, `browInnerUp`, `browDown`, `eyeSquint`, `eyeWide`, `cheekRaise`, `lipPress`, `pucker`. When sent, they decide the mood instead of a guess from the photo. |
+
+The frontend's `Camera.jsx` already sends all three.
 
 Response:
 
@@ -67,11 +79,11 @@ Response:
 | Field | Type | Notes |
 |---|---|---|
 | `glasses`, `hair`, `expression`, `clothing` | string or `null` | `null` when not visible (e.g. no glasses) |
-| `extras` | string[] | 0 to 3 other things it noticed. Often empty: an extra is only kept if two different AI models both saw it, so the book doesn't invent things like a chain you aren't wearing. |
+| `extras` | string[] | Up to 8 small, specific details, e.g. `"tiny yellow star stud earring"`, `"white circle logo on the chest"`. A detail is only kept if a second AI model also saw it, so the book doesn't invent things like a chain you aren't wearing. |
 | `mood` | `"happy"` \| `"sad"` \| `"neutral"` | Read from the facial expression. Drives the story's tone. |
 | `fallback` | `true` (optional) | The AI had trouble, so these are generic features. Still fine to make a story from. |
 
-Takes about 1 to 2 seconds.
+Takes about 2 seconds. Three vision models look at the photo at the same time: Kimi K3 reads the details, and Gemma 3 and MiniCPM-V double-check them.
 
 ### `POST /story`
 
@@ -118,7 +130,7 @@ Every error has the same shape, with a message you can show on screen as it is:
 | Status | When |
 |---|---|
 | 400 | Missing or invalid input (no image, no name, bad genre, bad JSON) |
-| 413 | Photo over 5 MB, so resize it before sending |
+| 413 | A photo over 5 MB, so resize it before sending |
 | 415 | Not a JPEG, PNG or WebP |
 | 422 | `/scan` found no face in the photo |
 | 429 | Too many requests (20 per minute per device). See the `Retry-After` header. |
@@ -154,7 +166,7 @@ curl -X POST 'localhost:8000/scan?mood=sad' -H 'Content-Type: application/json' 
 
 ## Privacy
 
-- The photo stays in memory for one request only. It is never saved to disk and never logged.
+- The photo and close-up stay in memory for one request only. They are never saved to disk and never logged.
 - The vision prompt only describes visible, neutral things. It never guesses race, age, gender, weight, health or attractiveness.
 - Models don't always follow that, so every phrase also goes through a filter that drops anything about skin or face colour, ethnicity, age, body, gender, looks, health or other people in the photo.
 - Names and features are cleaned before they go into the story prompt, so they can't be used to trick the AI.
@@ -166,8 +178,8 @@ Optional, in `backend/.env` (see `.env.example`):
 | Variable | Default |
 |---|---|
 | `PORT` | `8000` |
-| `VISION_MODEL` | `google/gemma-3-27b-it` |
-| `VISION_CHECK_MODEL` | `openbmb/MiniCPM-V-4_5`: second opinion on extras, or `off` |
+| `VISION_MODEL` | `moonshotai/Kimi-K3` |
+| `VISION_CHECK_MODELS` | `google/gemma-3-27b-it,openbmb/MiniCPM-V-4_5`: second opinions on details, or `off` |
 | `STORY_MODEL` | `Qwen/Qwen3-235B-A22B-Instruct-2507` |
 | `RATE_LIMIT_PER_MIN` | `20` |
 | `CORS_ORIGIN` | any origin. Comma-separate to restrict, e.g. `http://localhost:5173`. |
