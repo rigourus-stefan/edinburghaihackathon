@@ -343,43 +343,100 @@ button:focus-visible, input:focus-visible, .file:focus-within {
 .writing { margin: 10px 0; color: var(--ink-soft); font-weight: 800; }
 
 /* Book */
-.book-wrap { width: min(850px, 100%); animation: appear 0.3s ease both; }
+/* ---------- The book: a real open book ---------- */
+.book-wrap { width: min(1040px, 100%); animation: appear 0.3s ease both; }
+
+/* Hardcover edge around the pages, tinted by the reader's mood. */
 .book {
-  perspective: 1200px;
-  overflow: hidden;
-  padding: 0;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: 0 12px 32px #14233d0b;
+  padding: 12px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--mood-accent) 55%, #2a1d12), color-mix(in srgb, var(--mood-accent) 35%, #1a120b));
+  box-shadow: 0 30px 60px -24px #0007, 0 4px 10px #0002;
 }
-.page {
-  min-height: min(480px, 62vh);
+
+/* Two facing pages with a stack of paper showing at the edges. */
+.spread {
   position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  perspective: 2400px;
+  box-shadow: -3px 3px 0 -1px #efe6d2, -6px 6px 0 -2px #e2d6bd, 3px 3px 0 -1px #efe6d2, 6px 6px 0 -2px #e2d6bd;
+  border-radius: 4px;
+}
+
+.leaf {
+  position: relative;
+  min-height: min(560px, 70vh);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(28px, 6vw, 68px);
-  background: var(--surface);
-  transform-origin: left center;
+  padding: 48px 46px 54px;
+  color: var(--ink);
+  background-color: #fbf6ea;
+  background-image: radial-gradient(circle at 30% 20%, #fffdf7 0, transparent 60%);
 }
-.turn-next { animation: turn-next 0.35s ease both; }
-.turn-prev { animation: turn-prev 0.35s ease both; }
-@keyframes turn-next { from { opacity: 0.5; transform: translateX(8px); } }
-@keyframes turn-prev { from { opacity: 0.5; transform: translateX(-8px); } }
-.title-page { width: min(580px, 100%); text-align: center; }
-.title-page h1 { margin-bottom: 14px; font-size: clamp(2rem, 5vw, 3rem); }
+/* Shadow where the pages curve into the spine. */
+.leaf.left { border-radius: 4px 0 0 4px; box-shadow: inset -26px 0 30px -22px #0005; }
+.leaf.right { border-radius: 0 4px 4px 0; box-shadow: inset 26px 0 30px -22px #0005; }
+.leaf.left .page-number { left: 26px; right: auto; }
+
+/* The page turning over the spine. */
+.turning {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  transform-style: preserve-3d;
+  z-index: 2;
+}
+.turning.next { left: 50%; transform-origin: left center; animation: flip-next 0.85s cubic-bezier(0.45, 0.05, 0.3, 1) forwards; }
+.turning.prev { left: 0; transform-origin: right center; animation: flip-prev 0.85s cubic-bezier(0.45, 0.05, 0.3, 1) forwards; }
+.turning .face { position: absolute; inset: 0; backface-visibility: hidden; }
+.turning .face > .leaf { height: 100%; }
+.turning .face.back { transform: rotateY(180deg); }
+.turning .face.front .leaf { box-shadow: inset 26px 0 30px -22px #0005, -10px 0 30px -10px #0003; }
+@keyframes flip-next { to { transform: rotateY(-180deg); } }
+@keyframes flip-prev { to { transform: rotateY(180deg); } }
+
+/* Phone: one page at a time, still on paper. */
+.book.single { padding: 8px; }
+.single-page { animation: page-in 0.35s ease both; }
+.single-page .leaf { min-height: min(62vh, 520px); padding: 34px 24px 46px; border-radius: 4px; }
+@keyframes page-in { from { opacity: 0.4; transform: translateX(10px); } }
+
+/* The book's own notes about the reader: what it saw. */
+.notes { width: 100%; color: var(--ink); font-size: 1rem; line-height: 1.5; }
+.notes p.dear { margin: 0 0 6px; color: var(--ink); font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; }
+.notes p { margin: 0 0 12px; color: var(--ink-soft); }
+.notes ul { margin: 4px 0 16px; padding: 0; list-style: none; }
+.notes li { display: grid; grid-template-columns: 92px 1fr; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px solid #e6dcc6; font-weight: 700; }
+.notes li span { color: var(--ink-soft); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.notes strong { color: var(--mood-accent); }
+.notes .signature { margin: 16px 0 0; color: var(--ink); font-family: var(--font-display); font-size: 1.2rem; font-style: italic; text-align: right; }
+
+.title-page { width: 100%; text-align: center; }
+.title-page .eyebrow { margin: 0 0 14px; color: var(--mood-accent); font-size: 0.8rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+.title-page h1 { margin-bottom: 14px; font-size: clamp(1.8rem, 3.6vw, 2.7rem); }
 .title-page .muted { margin: 0; }
+
 .story-text {
-  width: min(640px, 100%);
+  width: 100%;
   margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: clamp(1.2rem, 2.4vw, 1.5rem);
+  font-size: clamp(1.1rem, 1.9vw, 1.32rem);
   font-weight: 500;
   line-height: 1.75;
 }
 .story-text::first-letter { color: var(--mood-accent); float: left; margin: 5px 8px 0 0; font-size: 2.5em; font-weight: 700; line-height: 0.9; }
+.the-end { margin: 0; font-family: var(--font-display); font-size: 2.4rem; font-style: italic; color: var(--mood-accent); }
+
+/* A soft mark in the corner of the page being read aloud. */
+.leaf.reading::after { content: ''; position: absolute; top: 18px; width: 8px; height: 8px; border-radius: 50%; background: var(--mood-accent); animation: pulse 1.6s ease-in-out infinite; }
+.leaf.left.reading::after { left: 20px; }
+.leaf.right.reading::after { right: 20px; }
+@keyframes pulse { 50% { opacity: 0.25; } }
+
 /* Words that came from the face scan: impossible to miss. */
 mark.feat {
   padding: 0 3px;
@@ -399,7 +456,7 @@ mark.feat {
 .scan-legend mark.feat { animation: none; }
 .scan-count { margin: 18px 0 0; color: var(--ink-soft); font-size: 0.95rem; }
 .scan-count strong { color: var(--mood-accent); }
-.page-number { position: absolute; right: 22px; bottom: 16px; color: var(--ink-soft); font-size: 0.86rem; }
+.page-number { position: absolute; right: 26px; bottom: 18px; color: var(--ink-soft); font-family: var(--font-display); font-size: 0.9rem; }
 .book-controls {
   display: grid;
   grid-template-columns: 46px minmax(80px, 1fr) auto minmax(80px, 1fr) 46px;
@@ -424,7 +481,6 @@ mark.feat {
   .camera-head { margin-bottom: 14px; }
   .viewport { aspect-ratio: 3 / 4; max-height: 54vh; }
   .book-wrap { width: 100%; }
-  .page { min-height: min(60vh, 500px); padding: 28px 22px 42px; }
   .book-controls { grid-template-columns: 42px 1fr 42px; gap: 10px; }
   .book-controls .round:first-child { grid-column: 1; }
   .book-controls .page-count { grid-column: 2; }

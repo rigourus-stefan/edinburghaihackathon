@@ -76,6 +76,7 @@ export function parseHeroName(value) {
     .join(' ')
     .slice(0, 30)
     .trim()
+    .replace(/(^|\s)\p{Ll}/gu, (c) => c.toUpperCase()) // "stefan" -> "Stefan"
   if (!name) throw new HttpError(400, 'The hero needs a name (letters only).')
   return name
 }
@@ -152,6 +153,8 @@ export function parseStory(raw) {
   const pages = (Array.isArray(raw?.pages) ? raw.pages : [])
     .map((p) =>
       String(p ?? '')
+        .replace(/\\n|\n/g, ' ') // a line break written as the characters "\n", or a real one
+        .replace(/\s{2,}/g, ' ')
         .replace(/\(\s*\d+\s*words?\s*\)/gi, '') // models sometimes add "(42 words)"
         .replace(/^\s*(page\s*\d+\s*[:.-]\s*)/i, '')
         .trim()

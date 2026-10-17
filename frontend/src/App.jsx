@@ -30,7 +30,7 @@ export default function App() {
   }
 
   function begin(name, g) {
-    setHeroName(name)
+    setHeroName(name.replace(/(^|\s)\p{Ll}/gu, (c) => c.toUpperCase())) // "stefan" -> "Stefan"
     setGenre(g)
     setError(null)
     setScreen('camera')
@@ -88,6 +88,7 @@ export default function App() {
           <Book
             story={story}
             features={features}
+            heroName={heroName}
             onNewStory={() => {
               startWriting(features)
               setScreen('saw')
