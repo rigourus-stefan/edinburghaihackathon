@@ -195,6 +195,12 @@ button:focus-visible, input:focus-visible, .file:focus-within {
   margin: 0 0 34px;
 }
 .tagline em { color: var(--ink); font-style: normal; font-weight: 800; }
+.tagline-old, .tagline-new { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.tagline-old { color: var(--ink-soft); opacity: 0.75; }
+.tagline-old svg { color: var(--bad); }
+.tagline-old s { text-decoration-thickness: 1.5px; }
+.tagline-new { margin-top: 6px; color: var(--ink); font-size: 1.22rem; font-weight: 700; }
+.tagline-new svg { color: var(--good); }
 .field { display: block; margin-bottom: 24px; text-align: left; }
 .field span, .genres legend {
   display: block;
