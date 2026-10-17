@@ -1,0 +1,12 @@
+# Secrets
+apikey.env
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Tools
+.code-review-graph/
+.idea/workspace.xml

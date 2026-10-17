@@ -1,7 +1,9 @@
-from dotenv import load_dotenv
-
 import os
+
+from dotenv import load_dotenv
 from openai import OpenAI
+
+load_dotenv("apikey.env")
 
 client = OpenAI(
     base_url="https://api.tokenfactory.nebius.com/v1/",
@@ -9,9 +11,7 @@ client = OpenAI(
 )
 
 r = client.chat.completions.create(
-    model="meta-llama/Meta-Llama-3.1-70B-Instruct",
+    model="Qwen/Qwen3-235B-A22B-Instruct-2507",
     messages=[{"role": "user", "content": "hello"}],
 )
 print(r.choices[0].message.content)
-
-load_dotenv()
