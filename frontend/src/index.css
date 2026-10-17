@@ -380,7 +380,25 @@ button:focus-visible, input:focus-visible, .file:focus-within {
   line-height: 1.75;
 }
 .story-text::first-letter { color: var(--mood-accent); float: left; margin: 5px 8px 0 0; font-size: 2.5em; font-weight: 700; line-height: 0.9; }
-mark.feat { padding: 0 2px; color: inherit; background: color-mix(in srgb, var(--mood-accent) 15%, white); border-radius: 3px; }
+/* Words that came from the face scan: impossible to miss. */
+mark.feat {
+  padding: 0 3px;
+  color: inherit;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--mood-accent) 28%, white);
+  border-bottom: 2px solid var(--mood-accent);
+  border-radius: 3px 3px 0 0;
+  cursor: help;
+  animation: feat-in 1.4s ease both;
+}
+@keyframes feat-in {
+  0% { background: transparent; border-bottom-color: transparent; }
+  55% { background: color-mix(in srgb, var(--mood-accent) 50%, white); }
+}
+.scan-legend { margin: 14px 0 0; color: var(--ink-soft); font-size: 0.9rem; text-align: center; }
+.scan-legend mark.feat { animation: none; }
+.scan-count { margin: 18px 0 0; color: var(--ink-soft); font-size: 0.95rem; }
+.scan-count strong { color: var(--mood-accent); }
 .page-number { position: absolute; right: 22px; bottom: 16px; color: var(--ink-soft); font-size: 0.86rem; }
 .book-controls {
   display: grid;
@@ -423,7 +441,7 @@ mark.feat { padding: 0 2px; color: inherit; background: color-mix(in srgb, var(-
   .print-only h1 { margin-bottom: 24px; }
   .print-only p { margin: 0 0 18px; font-size: 1.2rem; line-height: 1.7; }
   .print-only footer { margin-top: 32px; color: #555; font-size: 0.9rem; }
-  mark.feat { background: #f2e5bf; }
+  mark.feat { background: #f2e5bf; border-bottom: 2px solid #c9a227; animation: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

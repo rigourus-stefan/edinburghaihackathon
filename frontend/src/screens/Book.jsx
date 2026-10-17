@@ -1,35 +1,65 @@
 import { useEffect, useMemo, useState } from 'react'
 import useSpeech from '../useSpeech'
 
-const SKIP_WORDS = new Set(['look', 'face', 'top', 'shirt', 'round', 'neck', 'background', 'them', 'side', 'left', 'right'])
+// Words too generic to highlight on their own (a "treasure chest" isn't from the scan).
+const SKIP_WORDS = new Set(['look', 'face', 'top', 'shirt', 'round', 'neck', 'background', 'them', 'side', 'left', 'right',
+  'chest', 'ear', 'ears', 'head', 'eyes', 'hand', 'line', 'shape', 'front', 'back', 'one', 'two'])
+const FILLER = new Set(['a', 'an', 'the', 'and', 'of', 'very', 'slightly'])
 
-// "tiny star earring on the left ear" -> the thing itself is before "on": "tiny star earring".
-const TRAILING = /\s(on|with|from|behind|in|by|near|at|around|over|under|hanging|that|which)\s.*$/
+// "hair with a yellow clip on the side" -> parts: "hair", "a yellow clip", "the side".
+const JOINERS = /\s(?:on|with|from|behind|in|by|near|at|around|over|under|hanging|that|which|and)\s/
 
-/** Words/phrases to make glow: each full feature phrase, plus the thing it names ("hair clip", "clip"). */
+/**
+ * Words and phrases from the face scan to highlight in the story, each mapped to where it came from.
+ * For "tiny yellow star stud earring" that's the full phrase, every word pair ("yellow star",
+ * "star stud", "stud earring") and the thing itself ("earring"), so the story's wording is
+ * caught even when it shortens the phrase.
+ */
 function highlightTerms(f) {
-  const phrases = [f.glasses, f.hair, f.expression, f.clothing, ...(f.extras ?? [])].filter(Boolean)
-  const terms = new Set()
-  for (const p of phrases) {
-    const phrase = p.toLowerCase()
-    terms.add(phrase)
-    const head = phrase.replace(TRAILING, '').replace(/[^a-z\s-]/g, '').trim()
-    const words = head.split(/\s+/)
-    const noun = words.at(-1)
-    if (noun && noun.length > 3 && !SKIP_WORDS.has(noun)) {
-      terms.add(noun)
-      if (words.length > 1) terms.add(words.slice(-2).join(' ')) // "hair clip", "star earring"
+  const sources = [
+    ['Glasses', f.glasses], ['Hair', f.hair], ['Expression', f.expression], ['Clothes', f.clothing],
+    ...(f.extras ?? []).map((e) => ['Detail', e]),
+  ].filter(([, phrase]) => phrase)
+  const terms = new Map()
+  const add = (term, source) => { if (!terms.has(term)) terms.set(term, source) }
+  for (const [label, phrase] of sources) {
+    const source = `${label}: ${phrase}`
+    add(phrase.toLowerCase(), source)
+    for (const part of phrase.toLowerCase().split(JOINERS)) {
+      const words = part.replace(/[^a-z\s-]/g, '').split(/\s+/).filter((w) => w && !FILLER.has(w))
+      for (let i = 0; i < words.length - 1; i++) {
+        if (!(SKIP_WORDS.has(words[i]) && SKIP_WORDS.has(words[i + 1]))) add(`${words[i]} ${words[i + 1]}`, source)
+      }
+      const noun = words.at(-1)
+      if (noun && noun.length > 3 && !SKIP_WORDS.has(noun)) add(noun, source)
     }
   }
-  return [...terms].sort((a, b) => b.length - a.length)
+  return terms
 }
 
 function Highlighted({ text, terms }) {
-  if (!terms.length) return text
-  const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-  const parts = text.split(new RegExp(`(${escaped.join('|')})`, 'gi'))
+  if (!terms.size) return text
+  const keys = [...terms.keys()].sort((a, b) => b.length - a.length) // longest match wins
+  const escaped = keys.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  const parts = text.split(new RegExp(`\\b(${escaped.join('|')})\\b`, 'gi'))
+  // Which scan features a highlight came from (a joined highlight can hold more than one).
+  const sourcesOf = (part) => {
+    const lower = part.toLowerCase()
+    return [...new Set(keys.filter((k) => lower.includes(k)).map((k) => terms.get(k)))].join(' · ')
+  }
+  // Join neighbouring matches ("navy blue" + " " + "hoodie") into one highlight.
+  for (let i = 1; i + 2 < parts.length; i += 2) {
+    if (/^\s+$/.test(parts[i + 1])) {
+      parts.splice(i, 3, parts[i] + parts[i + 1] + parts[i + 2])
+      i -= 2
+    }
+  }
   return parts.map((part, i) =>
-    i % 2 === 1 ? <mark key={i} className="feat">{part}</mark> : part,
+    i % 2 === 1 ? (
+      <mark key={i} className="feat" title={`From your face scan · ${sourcesOf(part)}`}>{part}</mark>
+    ) : (
+      part
+    ),
   )
 }
 
@@ -76,6 +106,9 @@ export default function Book({ story, features, onNewStory, onRestart }) {
             <div className="title-page">
               <h1>{story.title}</h1>
               <p className="muted">A story written by the book that read you</p>
+              <p className="scan-count">
+                Built from <strong>{new Set([...terms.values()]).size} things</strong> the book saw in your face scan
+              </p>
             </div>
           ) : (
             <>
@@ -87,6 +120,10 @@ export default function Book({ story, features, onNewStory, onRestart }) {
           )}
         </div>
       </div>
+
+      <p className="scan-legend">
+        <mark className="feat">Highlighted words</mark> come from your face scan. Hover one to see what the book saw.
+      </p>
 
       <div className="book-controls">
         <button className="round" onClick={() => go(page - 1)} disabled={page === 0} aria-label="Previous page">
