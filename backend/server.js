@@ -25,7 +25,10 @@ const VISION_MODEL = process.env.VISION_MODEL || 'moonshotai/Kimi-K3'
 const CHECK_MODELS = process.env.VISION_CHECK_MODELS === 'off'
   ? []
   : (process.env.VISION_CHECK_MODELS || 'google/gemma-3-27b-it,openbmb/MiniCPM-V-4_5').split(',').map((m) => m.trim()).filter(Boolean)
-const STORY_MODEL = process.env.STORY_MODEL || 'Qwen/Qwen3-235B-A22B-Instruct-2507'
+// Story writers, tried in order until one succeeds. Kimi K3 (thinking off) writes a full story in ~3 s;
+// the others are backups if it's slow or busy. Override with STORY_MODELS=a,b,c in .env.
+const STORY_MODELS = (process.env.STORY_MODELS || 'moonshotai/Kimi-K3,openai/gpt-oss-120b,Qwen/Qwen3-235B-A22B-Instruct-2507')
+  .split(',').map((m) => m.trim()).filter(Boolean)
 const API_KEY = process.env.NEBIUS_API_KEY?.trim()
 
 if (!MOCK && (!API_KEY || API_KEY.startsWith('your-'))) {
@@ -137,24 +140,27 @@ app.post('/story', limit, async (req, res) => {
   if (MOCK) return res.json(mockStory(name, req.query.mood ? parseMood(req.query.mood) : features.mood))
 
   const prompt = storyPrompt(name, genre, features)
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  for (const model of STORY_MODELS) {
+    // Model-specific switches: answer straight away instead of "thinking" first (much faster).
+    const extra = model.startsWith('moonshotai/') ? { thinking: { type: 'disabled' } }
+      : model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}
     try {
       const reply = await client.chat.completions.create(
-        { model: STORY_MODEL, temperature: 1.0, max_tokens: 1400, messages: [{ role: 'user', content: prompt }] },
-        { timeout: 30_000 },
+        { model, temperature: 1.0, max_tokens: 1400, messages: [{ role: 'user', content: prompt }], ...extra },
+        { timeout: 20_000, maxRetries: 0 }, // on a timeout, move on to the next model rather than wait
       )
       const story = parseStory(extractJson(reply.choices[0]?.message?.content))
       return res.json({ ...story, mood: features.mood })
     } catch (e) {
       if (e instanceof OpenAI.APIError && e.status === 401) throw e
-      console.warn(`/story attempt ${attempt} failed: ${e.name}: ${e.message}`)
+      console.warn(`/story: ${model} failed, trying the next one: ${e.name}: ${e.message}`)
     }
   }
   throw new HttpError(502, "The book couldn't finish the story. Please try again.")
 })
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, mock: MOCK, vision: VISION_MODEL, visionChecks: CHECK_MODELS, story: STORY_MODEL })
+  res.json({ ok: true, mock: MOCK, vision: VISION_MODEL, visionChecks: CHECK_MODELS, story: STORY_MODELS })
 })
 
 app.use((_req, res) => res.status(404).json({ detail: 'Not found. Try POST /scan or POST /story.' }))
