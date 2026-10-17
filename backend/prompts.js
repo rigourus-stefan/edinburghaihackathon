@@ -37,7 +37,7 @@ Strict rules:
 }
 
 // How the hero's real face right now shapes the story's emotional arc.
-export const MOOD_ARCS = {
+const MOOD_ARCS = {
   happy:
     'The hero is beaming. Their joy is contagious and is literally a power in this world: ' +
     'it lights dark places, wakes sleeping things, or makes grumpy creatures laugh. ' +
@@ -57,7 +57,7 @@ export const MOOD_ARCS = {
 
 // What each genre means for the story. Horror and thriller stay safe for all ages: dread and
 // tension, never gore or graphic violence, and the hero always comes through.
-export const GENRE_FLAVOUR = {
+const GENRE_FLAVOUR = {
   adventure: 'an adventure: a daring journey through wild places (jungles, cliffs, rope bridges, hidden maps, lost treasure) with a quest to complete',
   fantasy: 'a fantasy tale set in an imaginary, magical world: supernatural powers, mythical creatures (dragons, griffins, talking beasts), spells and an epic quest',
   scifi: 'a science-fiction story: futuristic technology, space travel, time travel, robots, strange planets or an alternate scientific reality, with one clever "what if" idea at its heart',

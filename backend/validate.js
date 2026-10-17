@@ -1,8 +1,8 @@
 // Checks and cleans everything that comes in from the browser or back from a model.
 // Anything that fails throws an HttpError, which server.js turns into { detail } JSON.
 
-export const MOODS = ['happy', 'sad', 'neutral']
-export const GENRES = ['adventure', 'fantasy', 'scifi', 'mystery', 'thriller', 'horror', 'comedy', 'fairytale']
+const MOODS = ['happy', 'sad', 'neutral']
+const GENRES = ['adventure', 'fantasy', 'scifi', 'mystery', 'thriller', 'horror', 'comedy', 'fairytale']
 // Older names still accepted, so earlier versions of the frontend keep working.
 const GENRE_ALIASES = { space: 'scifi', 'sci-fi': 'scifi', 'science fiction': 'scifi', detective: 'mystery', suspense: 'thriller', 'fairy tale': 'fairytale' }
 
@@ -19,7 +19,7 @@ export class HttpError extends Error {
 const EMPTY = new Set(['', 'none', 'null', 'n/a', 'no', 'no glasses', 'not visible', 'unknown'])
 
 /** A short single-line phrase, or null. Strips anything that could smuggle instructions into a prompt. */
-export function cleanPhrase(value, max = 80) {
+function cleanPhrase(value, max = 80) {
   if (typeof value !== 'string') return null
   const v = value
     .replace(/[\u0000-\u001f\u007f]/g, ' ') // control chars, incl. newlines
@@ -110,7 +110,7 @@ const SENSITIVE = new RegExp(
 )
 
 /** A cleaned phrase, or null if it's empty or describes something the book must never mention. */
-export function safePhrase(value) {
+function safePhrase(value) {
   const v = cleanPhrase(value)
   return v && SENSITIVE.test(v) ? null : v
 }

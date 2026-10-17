@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { MOOD_INFO } from '../api'
 import useSpeech from '../useSpeech'
 
 const SKIP_WORDS = new Set(['look', 'face', 'top', 'shirt', 'round', 'neck', 'background', 'them', 'side', 'left', 'right'])
@@ -36,7 +35,6 @@ function Highlighted({ text, terms }) {
 
 export default function Book({ story, features, onNewStory, onRestart }) {
   const terms = useMemo(() => highlightTerms(features), [features])
-  const mood = MOOD_INFO[story.mood] ?? MOOD_INFO.neutral
   const last = story.pages.length // page 0 is the title page
   const [page, setPage] = useState(0)
   const [dir, setDir] = useState('next')
@@ -76,7 +74,6 @@ export default function Book({ story, features, onNewStory, onRestart }) {
         <div key={page} className={`page turn-${dir}`}>
           {page === 0 ? (
             <div className="title-page">
-              <span className="title-mood">{mood.icon}</span>
               <h1>{story.title}</h1>
               <p className="muted">A story written by the book that read you</p>
             </div>

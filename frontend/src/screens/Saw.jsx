@@ -23,7 +23,6 @@ export default function Saw({ heroName, features, story, storyError, onOpen, onR
       <ul className="features">
         {items.slice(0, shown).map((it, i) => (
           <li key={i} className="feature">
-            <span className="feature-icon">{it.icon}</span>
             <span>
               <span className="feature-label">{it.label}</span>
               <span className="feature-value">{it.value}</span>
@@ -34,7 +33,6 @@ export default function Saw({ heroName, features, story, storyError, onOpen, onR
 
       {shown > items.length && (
         <div className={`mood-card mood-${features.mood}`}>
-          <span className="mood-icon">{mood.icon}</span>
           <div>
             <span className="feature-label">Today you look</span>
             <strong>{mood.label}</strong>
@@ -55,7 +53,7 @@ export default function Saw({ heroName, features, story, storyError, onOpen, onR
           <button className="primary big glow" onClick={onOpen}>Open my book</button>
         ) : (
           <p className="writing">
-            <span className="quill">🪶</span> The book is writing your story…
+            The book is writing your story…
           </p>
         )}
         {done && <button className="link" onClick={onRetake}>That's not right, scan me again</button>}

@@ -63,7 +63,6 @@ export default function App() {
 
   return (
     <div className={`app mood-${mood}`}>
-      <div className="stars" aria-hidden />
       <main className="stage">
         {screen === 'start' && <Start initialName={heroName} initialGenre={genre} onStart={begin} />}
         {screen === 'camera' && (

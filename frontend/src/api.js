@@ -36,16 +36,16 @@ export function writeStory(heroName, genre, features) {
 /** The features as a labelled list, in the order the book "reveals" them. */
 export function featureList(f) {
   const items = []
-  if (f.glasses) items.push({ label: 'Glasses', value: f.glasses, icon: '👓' })
-  if (f.hair) items.push({ label: 'Hair', value: f.hair, icon: '💇' })
-  if (f.expression) items.push({ label: 'Expression', value: f.expression, icon: { happy: '😄', sad: '😢' }[f.mood] ?? '😐' })
-  if (f.clothing) items.push({ label: 'Clothes', value: f.clothing, icon: '👕' })
-  for (const e of f.extras ?? []) items.push({ label: 'Detail', value: e, icon: '✨' })
+  if (f.glasses) items.push({ label: 'Glasses', value: f.glasses })
+  if (f.hair) items.push({ label: 'Hair', value: f.hair })
+  if (f.expression) items.push({ label: 'Expression', value: f.expression })
+  if (f.clothing) items.push({ label: 'Clothes', value: f.clothing })
+  for (const e of f.extras ?? []) items.push({ label: 'Detail', value: e })
   return items
 }
 
 export const MOOD_INFO = {
-  happy: { icon: '☀️', label: 'Happy', line: 'Your smile is going to power this story.' },
-  sad: { icon: '🌧️', label: 'A little sad', line: "That's okay. This story will be gentle, and you won't be alone in it." },
-  neutral: { icon: '🌙', label: 'Calm and thoughtful', line: 'A cool head like yours is perfect for solving puzzles.' },
+  happy: { label: 'Happy', line: 'Your smile is going to power this story.' },
+  sad: { label: 'A little sad', line: "That's okay. This story will be gentle, and you won't be alone in it." },
+  neutral: { label: 'Calm and thoughtful', line: 'A cool head like yours is perfect for solving puzzles.' },
 }

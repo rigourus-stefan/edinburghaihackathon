@@ -43,7 +43,6 @@ button { color: inherit; }
 .mood-neutral { --mood-accent: #38836f; --mood-soft: #eff8f4; }
 .mood-none { --mood-accent: var(--accent); --mood-soft: var(--accent-soft); }
 
-.stars { display: none; }
 
 .stage {
   flex: 1;
@@ -240,7 +239,6 @@ button:focus-visible, input:focus-visible, .file:focus-within {
 }
 .genre:hover { border-color: #a9b6c7; color: var(--ink); }
 .genre.selected { color: #1b4f9f; background: var(--accent-soft); border-color: var(--accent); }
-.genre-icon { display: none; }
 
 /* Camera */
 .camera { width: min(620px, 100%); }
@@ -322,7 +320,6 @@ button:focus-visible, input:focus-visible, .file:focus-within {
   border-bottom: 1px solid var(--line);
   animation: appear 0.35s ease both;
 }
-.feature-icon { display: none; }
 .feature-label { display: block; margin-bottom: 2px; color: var(--ink-soft); font-size: 0.82rem; font-weight: 700; }
 .feature-value { color: var(--ink); font-weight: 800; }
 .mood-card {
@@ -340,12 +337,10 @@ button:focus-visible, input:focus-visible, .file:focus-within {
 }
 .mood-card strong { color: var(--ink); font-family: var(--font-display); font-size: 1.22rem; }
 .mood-card p { margin: 3px 0 0; color: var(--ink-soft); }
-.mood-icon { display: none; }
 .saw-actions { min-height: 72px; display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin-top: 20px; }
 .saw-actions .primary { align-self: flex-start; }
 .saw-actions .link { align-self: flex-start; }
 .writing { margin: 10px 0; color: var(--ink-soft); font-weight: 800; }
-.quill { display: none; }
 
 /* Book */
 .book-wrap { width: min(850px, 100%); animation: appear 0.3s ease both; }
@@ -375,7 +370,6 @@ button:focus-visible, input:focus-visible, .file:focus-within {
 .title-page { width: min(580px, 100%); text-align: center; }
 .title-page h1 { margin-bottom: 14px; font-size: clamp(2rem, 5vw, 3rem); }
 .title-page .muted { margin: 0; }
-.title-mood { display: none; }
 .story-text {
   width: min(640px, 100%);
   margin: 0;
@@ -423,7 +417,7 @@ mark.feat { padding: 0 2px; color: inherit; background: color-mix(in srgb, var(-
 
 @media print {
   body, .app { background: #fff !important; }
-  .stars, .stage > *:not(.book-wrap), .book, .book-controls, .book-actions, .privacy-footer { display: none !important; }
+  .stage > *:not(.book-wrap), .book, .book-controls, .book-actions, .privacy-footer { display: none !important; }
   .stage { display: block; width: auto; padding: 0; }
   .print-only { display: block; padding: 24px; color: #000; font-family: var(--font-display); }
   .print-only h1 { margin-bottom: 24px; }
