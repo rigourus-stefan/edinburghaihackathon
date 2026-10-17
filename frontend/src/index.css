@@ -344,7 +344,7 @@ button:focus-visible, input:focus-visible, .file:focus-within {
 
 /* Book */
 /* ---------- The book: a real open book ---------- */
-.book-wrap { width: min(1040px, 100%); animation: appear 0.3s ease both; }
+.book-wrap { width: min(1040px, 100%); align-self: start; animation: appear 0.3s ease both; } /* pinned to the top so it never shifts */
 
 /* Hardcover edge around the pages, tinted by the reader's mood. */
 .book {
@@ -364,17 +364,22 @@ button:focus-visible, input:focus-visible, .file:focus-within {
   border-radius: 4px;
 }
 
+/* Every page is the same fixed size, like a real book, so it never grows or jumps when you turn.
+   If something is ever too long, that page scrolls instead of stretching the book. */
 .leaf {
   position: relative;
-  min-height: min(560px, 70vh);
+  height: clamp(480px, 72vh, 640px);
+  overflow-y: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 48px 46px 54px;
   color: var(--ink);
   background-color: #fbf6ea;
   background-image: radial-gradient(circle at 30% 20%, #fffdf7 0, transparent 60%);
 }
+/* Centre the page's content, but let a long page scroll from its top instead of being cut off. */
+.leaf > :not(.page-number) { margin-top: auto; margin-bottom: auto; }
 /* Shadow where the pages curve into the spine. */
 .leaf.left { border-radius: 4px 0 0 4px; box-shadow: inset -26px 0 30px -22px #0005; }
 .leaf.right { border-radius: 0 4px 4px 0; box-shadow: inset 26px 0 30px -22px #0005; }
@@ -401,18 +406,18 @@ button:focus-visible, input:focus-visible, .file:focus-within {
 /* Phone: one page at a time, still on paper. */
 .book.single { padding: 8px; }
 .single-page { animation: page-in 0.35s ease both; }
-.single-page .leaf { min-height: min(62vh, 520px); padding: 34px 24px 46px; border-radius: 4px; }
+.single-page .leaf { height: clamp(420px, 64vh, 560px); padding: 34px 24px 46px; border-radius: 4px; }
 @keyframes page-in { from { opacity: 0.4; transform: translateX(10px); } }
 
 /* The book's own notes about the reader: what it saw. */
-.notes { width: 100%; color: var(--ink); font-size: 1rem; line-height: 1.5; }
+.notes { width: 100%; color: var(--ink); font-size: 0.95rem; line-height: 1.4; }
 .notes p.dear { margin: 0 0 6px; color: var(--ink); font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; }
 .notes p { margin: 0 0 12px; color: var(--ink-soft); }
 .notes ul { margin: 4px 0 16px; padding: 0; list-style: none; }
-.notes li { display: grid; grid-template-columns: 92px 1fr; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px solid #e6dcc6; font-weight: 700; }
+.notes li { display: grid; grid-template-columns: 92px 1fr; align-items: baseline; gap: 10px; padding: 5px 0; border-bottom: 1px solid #e6dcc6; font-weight: 700; }
 .notes li span { color: var(--ink-soft); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
 .notes strong { color: var(--mood-accent); }
-.notes .signature { margin: 16px 0 0; color: var(--ink); font-family: var(--font-display); font-size: 1.2rem; font-style: italic; text-align: right; }
+.notes .signature { margin: 10px 0 0; color: var(--ink); font-family: var(--font-display); font-size: 1.2rem; font-style: italic; text-align: right; }
 
 .title-page { width: 100%; text-align: center; }
 .title-page .eyebrow { margin: 0 0 14px; color: var(--mood-accent); font-size: 0.8rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
