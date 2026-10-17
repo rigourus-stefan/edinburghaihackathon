@@ -13,3 +13,7 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# Local editor/tool settings
+.claude/
+.code-review-graph/
