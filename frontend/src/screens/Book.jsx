@@ -173,7 +173,7 @@ export default function Book({ story, features, heroName, onNewStory, onRestart 
               ))}
             </ul>
             <p>Today you seem <strong>{mood.label.toLowerCase()}</strong>. So I wrote you this story.</p>
-            <p className="signature">The Book</p>
+            <p className="signature">{story.title}</p>
           </div>
         )}
         {leaf.kind === 'title' && (
