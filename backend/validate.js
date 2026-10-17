@@ -2,7 +2,9 @@
 // Anything that fails throws an HttpError, which server.js turns into { detail } JSON.
 
 export const MOODS = ['happy', 'sad', 'neutral']
-export const GENRES = ['adventure', 'space', 'fantasy', 'mystery']
+export const GENRES = ['adventure', 'fantasy', 'scifi', 'mystery', 'thriller', 'horror', 'comedy', 'fairytale']
+// Older names still accepted, so earlier versions of the frontend keep working.
+const GENRE_ALIASES = { space: 'scifi', 'sci-fi': 'scifi', 'science fiction': 'scifi', detective: 'mystery', suspense: 'thriller', 'fairy tale': 'fairytale' }
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // decoded size; a 768px JPEG is ~100 KB
 const MIN_IMAGE_BYTES = 2 * 1024
@@ -76,7 +78,8 @@ export function parseHeroName(value) {
 
 export function parseGenre(value) {
   if (value === undefined || value === null || value === '') return 'adventure'
-  const genre = String(value).toLowerCase().trim()
+  const name = String(value).toLowerCase().trim()
+  const genre = GENRE_ALIASES[name] ?? name
   if (!GENRES.includes(genre)) throw new HttpError(400, `Genre must be one of: ${GENRES.join(', ')}.`)
   return genre
 }

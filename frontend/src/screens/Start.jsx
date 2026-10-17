@@ -2,9 +2,13 @@ import { useState } from 'react'
 
 const GENRES = [
   { id: 'adventure', label: 'Adventure' },
-  { id: 'space', label: 'Space' },
   { id: 'fantasy', label: 'Fantasy' },
+  { id: 'scifi', label: 'Sci-Fi' },
   { id: 'mystery', label: 'Mystery' },
+  { id: 'thriller', label: 'Thriller' },
+  { id: 'horror', label: 'Horror' },
+  { id: 'comedy', label: 'Comedy' },
+  { id: 'fairytale', label: 'Fairy Tale' },
 ]
 
 export default function Start({ initialName, initialGenre, onStart }) {

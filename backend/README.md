@@ -92,12 +92,12 @@ Send the hero's name, a genre and the **whole `features` object exactly as `/sca
 ```json
 {
   "heroName": "Mia",
-  "genre": "space",
+  "genre": "scifi",
   "features": { "glasses": "round black glasses", "hair": "...", "expression": "...", "clothing": "...", "extras": [], "mood": "happy" }
 }
 ```
 
-`genre` is one of `adventure`, `space`, `fantasy`, `mystery` (defaults to `adventure`).
+`genre` is one of `adventure`, `fantasy`, `scifi`, `mystery`, `thriller`, `horror`, `comedy`, `fairytale` (defaults to `adventure`). Older names like `space` still work. Horror and thriller stay safe for all ages: dread and tension, never gore.
 
 Response:
 
@@ -155,7 +155,7 @@ async function post(path, body) {
 
 const image = canvas.toDataURL('image/jpeg', 0.85)
 const { features } = await post('/scan', { image })
-const story = await post('/story', { heroName: 'Mia', genre: 'space', features })
+const story = await post('/story', { heroName: 'Mia', genre: 'scifi', features })
 ```
 
 ### Example (terminal)

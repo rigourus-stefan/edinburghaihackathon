@@ -55,11 +55,17 @@ export const MOOD_ARCS = {
     "satisfying puzzle or surprise, where the hero's calm focus is the key. End with a small, delightful twist.",
 }
 
+// What each genre means for the story. Horror and thriller stay safe for all ages: dread and
+// tension, never gore or graphic violence, and the hero always comes through.
 export const GENRE_FLAVOUR = {
-  adventure: 'a wild-places adventure: jungles, cliffs, hidden maps, rope bridges, treasure',
-  space: 'a space adventure: starships, odd planets, friendly aliens, comets, zero gravity',
-  fantasy: 'a fantasy tale: dragons, enchanted forests, talking animals, spells, castles',
-  mystery: 'a mystery: a puzzling disappearance, clues, secret passages, a surprising culprit',
+  adventure: 'an adventure: a daring journey through wild places (jungles, cliffs, rope bridges, hidden maps, lost treasure) with a quest to complete',
+  fantasy: 'a fantasy tale set in an imaginary, magical world: supernatural powers, mythical creatures (dragons, griffins, talking beasts), spells and an epic quest',
+  scifi: 'a science-fiction story: futuristic technology, space travel, time travel, robots, strange planets or an alternate scientific reality, with one clever "what if" idea at its heart',
+  mystery: 'a mystery and detective story: a crime, puzzle or hidden secret to solve, real clues the reader can follow, red herrings, and a fair but surprising reveal',
+  thriller: 'a thriller full of suspense: high stakes, a ticking clock, a looming danger, short punchy sentences and a cliffhanger at the end of each page, with a satisfying escape (tension, never graphic violence)',
+  horror: 'a spooky horror story: eerie places, strange sounds, creeping dread and something supernatural or uncanny, building shivers rather than shocks; no gore and nothing graphic, and the hero comes through safely in the end',
+  comedy: 'a comedy: absurd situations, silly misunderstandings, running jokes, funny sounds and a ridiculous but happy ending',
+  fairytale: 'a fairy tale: a timeless kingdom, a quest, a wise or tricky magical helper, a test of character, a gentle moral and a "happily ever after" twist',
 }
 
 // Random sparks so two scans of the same face never produce the same story.
@@ -107,6 +113,8 @@ Rules:
 - The glasses, hair, expression and clothing must each MATTER to the plot, not just be mentioned: the glasses help spot a hidden clue; the hoodie's pocket holds exactly the right thing; the curly hair hides a tiny friend.
 - Weave in EVERY small detail too. They are what makes the reader gasp "that's me!": a raised eyebrow, a logo, a hair clip. Each one appears at least once, and at least two of them become important to the plot (the star earring catches the moonlight, the swoosh logo matches a secret symbol).
 - Use the exact words from the list at least once each so the reader recognises themself.
+- Never invent new features of ${name}'s appearance or clothing beyond the list (no extra logos, pockets' contents are fine but not new prints or accessories). Invented objects, places and characters are welcome.
+- Jump straight into the ${genre} world from the first sentence. Don't make the story about a book looking at ${name}, and don't open in a library unless the genre needs it. Give it a fresh, specific title.
 - Features are strengths and superpowers. Never make a joke at the expense of how someone looks.
 - Be genuinely inventive: fresh names, vivid sensory details, one moment of real surprise. Avoid clichés like "once upon a time" and "it was all a dream".
 - Never assume ${name}'s gender: no he/she/him/her/boy/girl for the hero. Use their name, or "they".
